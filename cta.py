@@ -197,12 +197,12 @@ def generate_feed(episodes, output_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        prog='Car Talk Archiver',
+        prog='cta.py',
         description='Generate a podcast RSS feed containing every Car Talk episode currently hosted by NPR.'
     )
     parser.add_argument('-i', '--input', type=Path, metavar='file',
-                        help='file name of an existing feed')
-    parser.add_argument('-o', '--output', type=Path, metavar='path', default=DEFAULT_OUTPUT_PATH,
+                        help='file name of an existing feed (if specified, script will only check for newer episodes)')
+    parser.add_argument('-o', '--output', type=Path, metavar='file', default=DEFAULT_OUTPUT_PATH,
                         help='output file name (defaults to cartalk_<timestamp>.xml in current working directory)')
     args = parser.parse_args()
 
