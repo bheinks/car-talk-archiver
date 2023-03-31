@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import argparse
 import json
 import xml.etree.ElementTree as ET
@@ -31,7 +33,7 @@ class Episode:
 
 
 def main(args):
-    # If input file specified, parse episodes and fetch any newer ones from web
+    # If input file specified, parse episodes and fetch any newer ones from the web
     if args.input:
         root = get_xml_root(args.input)
         if not root:
