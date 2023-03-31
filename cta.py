@@ -1,15 +1,22 @@
+import argparse
 import json
-from argparse import ArgumentParser
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from sys import exit
+from urllib.parse import urlparse, parse_qs
 
 import requests
 from bs4 import BeautifulSoup
 from feedgen.feed import FeedGenerator
 
+# Global constants
 FEED_URL = 'https://www.npr.org/get/510208/render/partial/next?start={}'
 EPS_PER_PAGE = 24
+AUDIO_BITRATE = 128
+DEFAULT_OUTPUT_PATH = Path(f"cartalk_{datetime.now().strftime('%Y%m%d%H%M')}.xml")
+ITUNES_NAMESPACE = {'itunes': "http://www.itunes.com/dtds/podcast-1.0.dtd"}
 
 
 @dataclass
@@ -23,17 +30,68 @@ class Episode:
     size: str
 
 
-def main(output_path):
-    print('Fetching episode metadata...', end=' ')
-    episodes = fetch_episode_metadata()
-    print('Done.')
+def main(args):
+    # If input file specified, parse episodes and fetch any newer ones from web
+    if args.input:
+        root = get_xml_root(args.input)
+        if not root:
+            return -1
 
-    print('Generating rss.xml...', end=' ')
-    generate_feed(episodes, output_path)
-    print('Done.')
+        # Get channel (container of all item tags)
+        channel = root.find('channel')
+        if not channel:
+            print('ERROR: Input file does not appear to be valid podcast RSS.')
+            return -1
+    
+        # Fetch the published date of the most recent episode
+        last_episode_date = datetime.strptime(
+            channel.find('./item[last()]/pubDate').text,
+            '%a, %d %b %Y %H:%M:%S %z'
+        )
+
+        # Combine episode sources
+        episodes = get_episodes_from_channel(channel) + get_episodes_from_web(last_episode_date)[::-1]
+    else:
+        episodes = get_episodes_from_web()
+
+    generate_feed(episodes, args.output)
+
+    return 0
 
 
-def fetch_episode_metadata():
+def get_xml_root(input_path):
+    try:
+        tree = ET.parse(input_path)
+    except FileNotFoundError:
+        print('ERROR: Input file not found.')
+        return
+    except ET.ParseError:
+        print('ERROR: Could not parse input.')
+        return
+
+    return tree.getroot()
+
+
+def get_episodes_from_channel(channel):
+    episodes = []
+    for item in channel.iter('item'):
+        title = item.find('title').text
+        pub_date = item.find('pubDate').text
+        link = item.find('link').text
+        description = item.find('itunes:summary', ITUNES_NAMESPACE).text
+        duration = item.find('itunes:duration', ITUNES_NAMESPACE).text
+        
+        enclosure = item.find('enclosure').attrib
+        audio_url = enclosure['url']
+        size = enclosure['length']
+
+        episode = Episode(title, description, pub_date, link, audio_url, duration, size)
+        episodes.append(episode)
+    
+    return episodes
+
+
+def get_episodes_from_web(last_episode_date=None):
     # List of episode objects
     episodes = []
 
@@ -67,6 +125,11 @@ def fetch_episode_metadata():
             # As time and time zone not provided, default to noon UTC
             pub_date = pub_date.replace(tzinfo=timezone.utc) + timedelta(hours=12)
 
+            # Stop parsing if we're past last episode date
+            if last_episode_date and pub_date <= last_episode_date:
+                still_eps = False
+                break
+
             # Discard child tags and get description
             for child in teaser_tag.findChildren():
                 child.decompose()
@@ -78,13 +141,18 @@ def fetch_episode_metadata():
             audio_url = data['audioUrl']
             duration = data['duration']
 
-            # Get file size from header
-            size = requests.get(audio_url, stream=True).headers['Content-length']
+            # Deconstruct audio URL parameters
+            params = parse_qs(urlparse(audio_url).query)
+            try:
+                # Get file size from parameters
+                size = params['size'][0]
+            except KeyError:
+                # If file size is not provided, estimate using duration and bitrate
+                size = str((duration * AUDIO_BITRATE * 1000) // 8)
             
             # Construct episode object
             episode = Episode(title, description, pub_date, link, audio_url, duration, size)
             episodes.append(episode)
-            print(title)
         
         start += EPS_PER_PAGE
     
@@ -122,12 +190,18 @@ def generate_feed(episodes, output_path):
         entry.podcast.itunes_summary(episode.description)
 
     # Write feed to file
-    feed.rss_file(output_path)
+    feed.rss_file(output_path, pretty=True)
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
-    parser.add_argument('output_path', type=Path)
+    parser = argparse.ArgumentParser(
+        prog='Car Talk Archiver',
+        description='Generate a podcast RSS feed containing every Car Talk episode currently hosted by NPR.'
+    )
+    parser.add_argument('-i', '--input', type=Path, metavar='file',
+                        help='file name of an existing feed')
+    parser.add_argument('-o', '--output', type=Path, metavar='path', default=DEFAULT_OUTPUT_PATH,
+                        help='output file name (defaults to cartalk_<timestamp>.xml in current working directory)')
     args = parser.parse_args()
 
-    main(args.output_path)
+    exit(main(args))
