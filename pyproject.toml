@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "car-talk-archiver"
-version = "1.0.3"
+version = "1.0.4"
 description = ""
 authors = ["Brett Heinkel <bheinks@gmail.com>"]
 readme = "README.md"

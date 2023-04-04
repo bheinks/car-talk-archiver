@@ -192,7 +192,7 @@ def generate_feed(episodes, output_path):
         entry.podcast.itunes_summary(episode.description)
 
     # Write feed to file
-    feed.rss_file(output_path, pretty=True)
+    feed.rss_file(output_path)
 
 
 if __name__ == '__main__':
