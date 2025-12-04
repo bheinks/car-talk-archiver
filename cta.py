@@ -52,7 +52,8 @@ def main(args):
         )
 
         # Combine episode sources
-        episodes = get_episodes_from_channel(channel) + get_episodes_from_web(last_episode_date)[::-1]
+        episodes = get_episodes_from_channel(channel) \
+                  + get_episodes_from_web(last_episode_date)[::-1]
     else:
         episodes = get_episodes_from_web()
 
@@ -87,7 +88,8 @@ def get_episodes_from_channel(channel):
         audio_url = enclosure['url']
         size = enclosure['length']
 
-        episode = Episode(title, description, pub_date, link, audio_url, duration, size)
+        episode = Episode(title, description, pub_date, link,
+                          audio_url, duration, size)
         episodes.append(episode)
     
     return episodes
@@ -113,11 +115,16 @@ def get_episodes_from_web(last_episode_date=None):
         teaser_tags = soup.find_all('p', class_='teaser')
         data_tags = soup.find_all('div', class_='audio-module-controls-wrap')
 
-        # Stop parsing if we've run out of episodes 
+        # Stop parsing if we've run out of episodes
         if len(teaser_tags) < EPS_PER_PAGE:
             still_eps = False
 
         for link_tag, teaser_tag, data_tag in zip(link_tags, teaser_tags, data_tags):
+            # Pass over NPR+ exclusives (because we can't access them)
+            # to avoid indexing into None
+            if link_tag.a is None:
+                continue
+
             # Get link
             link = link_tag.a['href']
 
