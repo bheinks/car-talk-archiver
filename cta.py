@@ -109,15 +109,11 @@ def get_episodes_from_web(last_episode_date=None):
 
         # Initialize bs4
         soup = BeautifulSoup(response.text, 'html.parser')
-        print(soup.prettify())
 
         # Parse metadata for episodes
         link_tags = soup.find_all('h2', class_='title')
         teaser_tags = soup.find_all('p', class_='teaser')
         data_tags = soup.find_all('div', class_='audio-module-controls-wrap')
-
-        print([idx for idx, link_tag in enumerate(link_tags) if link_tag.a is None])
-
 
         # Stop parsing if we've run out of episodes
         if len(teaser_tags) < EPS_PER_PAGE:
