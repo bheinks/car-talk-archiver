@@ -17,8 +17,8 @@ from feedgen.feed import FeedGenerator
 FEED_URL = 'https://www.npr.org/get/510208/render/partial/next?start={}'
 EPS_PER_PAGE = 24
 AUDIO_BITRATE = 128
-DEFAULT_OUTPUT_PATH = Path(f"cartalk_{datetime.now().strftime('%Y%m%d%H%M')}.xml")
-ITUNES_NAMESPACE = {'itunes': "http://www.itunes.com/dtds/podcast-1.0.dtd"}
+DEFAULT_OUTPUT_PATH = Path(f'cartalk_{datetime.now().strftime('%Y%m%d%H%M')}.xml')
+ITUNES_NAMESPACE = {'itunes': 'http://www.itunes.com/dtds/podcast-1.0.dtd'}
 
 
 @dataclass
@@ -32,34 +32,38 @@ class Episode:
     size: str
 
 
-def main(args):
+def main(input_path, output_path):
     # If input file specified, parse episodes and fetch any newer ones from the web
-    if args.input:
-        root = get_xml_root(args.input)
-        if not root:
+    if input_path:
+        root = get_xml_root(input_path)
+        if root is None:
             return -1
 
         # Get channel (container of all item tags)
         channel = root.find('channel')
-        if not channel:
+        if channel is None:
             print('ERROR: Input file does not appear to be valid podcast RSS.')
             return -1
     
         # Fetch the published date of the most recent episode
-        last_episode_date = datetime.strptime(
-            channel.find('./item[last()]/pubDate').text,
-            '%a, %d %b %Y %H:%M:%S %z'
-        )
+        last_episode_date = get_last_episode_date(channel)
 
         # Combine episode sources
-        episodes = get_episodes_from_channel(channel) \
-                  + get_episodes_from_web(last_episode_date)[::-1]
+        episodes = get_episodes_from_channel(channel) + get_episodes_from_web(last_episode_date)[::-1]
     else:
         episodes = get_episodes_from_web()
 
-    generate_feed(episodes, args.output)
+    generate_feed(episodes, output_path)
 
     return 0
+
+
+def get_last_episode_date(channel):
+    def get_date(path):
+        return datetime.strptime(channel.find(path).text,'%a, %d %b %Y %H:%M:%S %z')
+
+    # Most recent episode is likely to be first or last of the channel
+    return max(get_date('./item[1]/pubDate'), get_date('./item[last()]/pubDate'))
 
 
 def get_xml_root(input_path):
@@ -67,10 +71,10 @@ def get_xml_root(input_path):
         tree = ET.parse(input_path)
     except FileNotFoundError:
         print('ERROR: Input file not found.')
-        return
+        return None
     except ET.ParseError:
         print('ERROR: Could not parse input.')
-        return
+        return None
 
     return tree.getroot()
 
@@ -120,8 +124,7 @@ def get_episodes_from_web(last_episode_date=None):
             still_eps = False
 
         for link_tag, teaser_tag, data_tag in zip(link_tags, teaser_tags, data_tags):
-            # Pass over NPR+ exclusives (because we can't access them)
-            # to avoid indexing into None
+            # Pass over NPR+ exclusives (because we can't access them) to avoid indexing None
             if link_tag.a is None:
                 continue
 
@@ -140,7 +143,7 @@ def get_episodes_from_web(last_episode_date=None):
                 break
 
             # Discard child tags and get description
-            for child in teaser_tag.findChildren():
+            for child in teaser_tag.find_all():
                 child.decompose()
             description = teaser_tag.get_text(strip=True)
 
@@ -175,14 +178,18 @@ def generate_feed(episodes, output_path):
 
     # Set values for show
     feed.title('Car Talk')
-    feed.description("America's funniest auto mechanics take calls from weary car owners all over the country, and crack wise while they diagnose Dodges and dismiss Diahatsus. You don't have to know anything about cars to love this one hour weekly laugh fest.")
+    feed.description(
+        "America's funniest auto mechanics take calls from weary car owners all over the country, and crack wise while "
+        "they diagnose Dodges and dismiss Diahatsus. You don't have to know anything about cars to love this one hour "
+        "weekly laugh fest."
+    )
     feed.image(
         url='https://media.npr.org/assets/img/2022/09/23/car-talk_tile_npr-network-01_sq-94167386915fb364047a98214d2d737df21465b1.jpg?s=1400',
         title='Car Talk',
-        link='http://www.cartalk.com'
+        link='https://www.cartalk.com'
     )
     feed.language('en')
-    feed.link(href='http://www.cartalk.com')
+    feed.link(href='https://www.cartalk.com')
     feed.copyright('Copyright 2001-2021 Tappet Brothers LLC - For Personal Use Only')
     
     # Set values for each episode
@@ -213,4 +220,4 @@ if __name__ == '__main__':
                         help='output file name (defaults to cartalk_<timestamp>.xml in current working directory)')
     args = parser.parse_args()
 
-    exit(main(args))
+    exit(main(args.input, args.output))

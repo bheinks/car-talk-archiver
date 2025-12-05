@@ -6,10 +6,11 @@ Compatible with any podcast application that supports RSS.
 
 ## Requirements
 ```
-python = "^3.10"
-beautifulsoup4 = "^4.11.2"
-feedgen = "^0.9.0"
-requests = "^2.28.2"
+python = "^3.13"
+beautifulsoup4 = "^4.14.3"
+feedgen = "^1.0.0"
+requests = "^2.32.5"
+lxml = "^6.0.2"
 ```
 
 ## Installation
