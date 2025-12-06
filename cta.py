@@ -17,7 +17,7 @@ from feedgen.feed import FeedGenerator
 FEED_URL = 'https://www.npr.org/get/510208/render/partial/next?start={}'
 EPS_PER_PAGE = 24
 AUDIO_BITRATE = 128
-DEFAULT_OUTPUT_PATH = Path(f'cartalk_{datetime.now().strftime('%Y%m%d%H%M')}.xml')
+DEFAULT_OUTPUT_PATH = Path(f'cartalk_{datetime.now().strftime('%Y%m%d%H%M%S')}.xml')
 ITUNES_NAMESPACE = {'itunes': 'http://www.itunes.com/dtds/podcast-1.0.dtd'}
 
 
@@ -60,10 +60,14 @@ def main(input_path, output_path):
 
 def get_last_episode_date(channel):
     def get_date(path):
-        return datetime.strptime(channel.find(path).text,'%a, %d %b %Y %H:%M:%S %z')
+        date_str = channel.find(path).text
+        return datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %z')
 
     # Most recent episode is likely to be first or last of the channel
-    return max(get_date('./item[1]/pubDate'), get_date('./item[last()]/pubDate'))
+    return max(
+        get_date('./item[1]/pubDate'),
+        get_date('./item[last()]/pubDate')
+    )
 
 
 def get_xml_root(input_path):
