@@ -9,11 +9,18 @@ homepage = "https://github.com/bheinks/car-talk-archiver"
 packages = [{include = "cta.py"}]
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = "^3.9"
 beautifulsoup4 = "^4.14.3"
 feedgen = "^1.0.0"
 requests = "^2.32.5"
 lxml = "^6.0.2"
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.3.0"
+flake8-pyproject = "^1.2.4"
+
+[tool.flake8]
+max-line-length = 120
 
 [build-system]
 requires = ["poetry-core"]

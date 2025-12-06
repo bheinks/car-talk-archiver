@@ -44,7 +44,7 @@ def main(input_path, output_path):
         if channel is None:
             print('ERROR: Input file does not appear to be valid podcast RSS.')
             return -1
-    
+
         # Fetch the published date of the most recent episode
         last_episode_date = get_last_episode_date(channel)
 
@@ -64,10 +64,7 @@ def get_last_episode_date(channel):
         return datetime.strptime(date_str, '%a, %d %b %Y %H:%M:%S %z')
 
     # Most recent episode is likely to be first or last of the channel
-    return max(
-        get_date('./item[1]/pubDate'),
-        get_date('./item[last()]/pubDate')
-    )
+    return max(get_date('./item[1]/pubDate'), get_date('./item[last()]/pubDate'))
 
 
 def get_xml_root(input_path):
@@ -91,15 +88,14 @@ def get_episodes_from_channel(channel):
         link = item.find('link').text
         description = item.find('itunes:summary', ITUNES_NAMESPACE).text
         duration = item.find('itunes:duration', ITUNES_NAMESPACE).text
-        
+
         enclosure = item.find('enclosure').attrib
         audio_url = enclosure['url']
         size = enclosure['length']
 
-        episode = Episode(title, description, pub_date, link,
-                          audio_url, duration, size)
+        episode = Episode(title, description, pub_date, link, audio_url, duration, size)
         episodes.append(episode)
-    
+
     return episodes
 
 
@@ -113,7 +109,7 @@ def get_episodes_from_web(last_episode_date=None):
     still_eps = True
     while still_eps:
         # HTTP GET list of episodes
-        response = requests.get(FEED_URL.format(start+1))
+        response = requests.get(FEED_URL.format(start + 1))
 
         # Initialize bs4
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -165,13 +161,13 @@ def get_episodes_from_web(last_episode_date=None):
             except KeyError:
                 # If file size is not provided, estimate using duration and bitrate
                 size = str((duration * AUDIO_BITRATE * 1000) // 8)
-            
+
             # Construct episode object
             episode = Episode(title, description, pub_date, link, audio_url, duration, size)
             episodes.append(episode)
-        
+
         start += EPS_PER_PAGE
-    
+
     return episodes
 
 
@@ -185,17 +181,14 @@ def generate_feed(episodes, output_path):
     feed.description(
         "America's funniest auto mechanics take calls from weary car owners all over the country, and crack wise while "
         "they diagnose Dodges and dismiss Diahatsus. You don't have to know anything about cars to love this one hour "
-        "weekly laugh fest."
-    )
+        "weekly laugh fest.")
     feed.image(
         url='https://media.npr.org/assets/img/2022/09/23/car-talk_tile_npr-network-01_sq-94167386915fb364047a98214d2d737df21465b1.jpg?s=1400',
-        title='Car Talk',
-        link='https://www.cartalk.com'
-    )
+        title='Car Talk', link='https://www.cartalk.com')
     feed.language('en')
     feed.link(href='https://www.cartalk.com')
     feed.copyright('Copyright 2001-2021 Tappet Brothers LLC - For Personal Use Only')
-    
+
     # Set values for each episode
     for episode in episodes:
         entry = feed.add_entry()
@@ -216,8 +209,7 @@ def generate_feed(episodes, output_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         prog='cta.py',
-        description='Generate a podcast RSS feed containing every Car Talk episode currently hosted by NPR.'
-    )
+        description='Generate a podcast RSS feed containing every Car Talk episode currently hosted by NPR.')
     parser.add_argument('-i', '--input', type=Path, metavar='file',
                         help='file name of an existing feed (if specified, script will only check for newer episodes)')
     parser.add_argument('-o', '--output', type=Path, metavar='file', default=DEFAULT_OUTPUT_PATH,
