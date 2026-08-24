@@ -153,6 +153,10 @@ def get_episodes_from_web(last_episode_date=None):
             audio_url = data['audioUrl']
             duration = data['duration']
 
+            # Skip over empty audioUrl
+            if not audio_url:
+                continue
+
             # Deconstruct audio URL parameters
             params = parse_qs(urlparse(audio_url).query)
             try:
